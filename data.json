@@ -1,0 +1,77 @@
+{
+  "kompos_01": {
+    "controls": {
+      "target_lembap": 80,
+      "target_suhu": 31
+    },
+    "raw_history": {
+      "data_point_01": {
+        "humidity": 80,
+        "temp": 30.1,
+        "timestamp": 1760114400000,
+        "temp_1": 30.1,
+        "temp_2": 29.9,
+        "temp_3": 30,
+        "temp_4": 30.2
+      },
+      "data_point_02": {
+        "humidity": 82,
+        "temp": 29.6,
+        "timestamp": 1760121600000,
+        "temp_1": 29.6,
+        "temp_2": 29.5,
+        "temp_3": 29.7,
+        "temp_4": 29.5
+      },
+      "data_point_03": {
+        "humidity": 85,
+        "temp": 28.2,
+        "timestamp": 1760143200000,
+        "temp_1": 28.2,
+        "temp_2": 28.1,
+        "temp_3": 28.3,
+        "temp_4": 28.1
+      },
+      "data_point_04": {
+        "humidity": 80,
+        "temp": 30.5,
+        "timestamp": 1760164800000,
+        "temp_1": 30.5,
+        "temp_2": 30.6,
+        "temp_3": 30.4,
+        "temp_4": 30.5
+      },
+      "data_point_05": {
+        "humidity": 78,
+        "temp": 31.5,
+        "timestamp": 1760179200000,
+        "temp_1": 31.5,
+        "temp_2": 31.6,
+        "temp_3": 31.4,
+        "temp_4": 31.5
+      },
+      "data_point_06": {
+        "humidity": 81,
+        "temp": 29.8,
+        "timestamp": 1760186400000,
+        "temp_1": 29.8,
+        "temp_2": 29.9,
+        "temp_3": 29.7,
+        "temp_4": 29.8
+      }
+    },
+    "readings": {
+      "lembap_pasir": 81,
+      "suhu_udara": 27.5,
+      "suhu_pasir": 29.8,
+      "temp_1": 29.8,
+      "temp_2": 29.9,
+      "temp_3": 29.7,
+      "temp_4": 29.8
+    },
+    "status": {
+      "pelembap_aktif": false,
+      "pemanas_aktif": true
+    }
+  }
+}
