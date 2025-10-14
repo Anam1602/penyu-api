@@ -1,21 +1,15 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    }
-  ],
+  "builds": [{ "src": "api/**/*.js", "use": "@vercel/node" }],
+  "routes": [{ "src": "/api/(.*)", "dest": "/api/$1" }],
   "crons": [
     {
       "path": "/api/aggregate-data",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/aggregate-5min",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
