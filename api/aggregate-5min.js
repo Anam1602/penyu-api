@@ -1,4 +1,19 @@
-const { initAdmin } = require("../_shared/firebaseAdmin");
+// api/aggregate-5min/index.js
+const admin = require("firebase-admin");
+
+function initAdmin() {
+  if (!admin.apps.length) {
+    const raw = JSON.parse(process.env.FIREBASE_CONFIG);
+    const sa = { ...raw, private_key: raw.private_key.replace(/\\n/g, "\n") };
+    admin.initializeApp({
+      credential: admin.credential.cert(sa),
+      databaseURL:
+        process.env.FIREBASE_DATABASE_URL ||
+        "https://proyek-semester-3-default-rtdb.asia-southeast1.firebasedatabase.app",
+    });
+  }
+  return admin;
+}
 
 const BUCKET_MS = 5 * 60 * 1000;
 
@@ -8,10 +23,11 @@ module.exports = async (req, res) => {
     const rtdb = admin.database();
     const fs = admin.firestore();
 
+    // window 5 menit yang BARU SELESAI
     const now = Date.now();
-    const currentBucketStart = Math.floor(now / BUCKET_MS) * BUCKET_MS;
-    const bucketStart = currentBucketStart - BUCKET_MS;
-    const bucketEnd = currentBucketStart - 1;
+    const currentStart = Math.floor(now / BUCKET_MS) * BUCKET_MS;
+    const bucketStart = currentStart - BUCKET_MS;
+    const bucketEnd = currentStart - 1;
 
     const snap = await rtdb
       .ref("kompos_01/raw_history")
@@ -48,7 +64,7 @@ module.exports = async (req, res) => {
         avg > 32 ? "Suhu Tinggi" : avg < 28 ? "Suhu Rendah" : "Suhu Ideal";
     }
 
-    // idempotent: pakai bucketStart sebagai docId
+    // idempotent: docId = bucket_start
     await fs.collection("history_logs_5min").doc(String(bucketStart)).set(
       {
         bucket_start: bucketStart,
