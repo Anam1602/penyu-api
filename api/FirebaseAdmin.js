@@ -1,17 +1,21 @@
-// Reuse Admin app across functions: require() cache akan menjaga single init.
+// api/FirebaseAdmin.js
 const admin = require("firebase-admin");
 
 function initAdmin() {
   if (!admin.apps.length) {
-    const raw = JSON.parse(process.env.FIREBASE_CONFIG);
-    const sa = {
-      ...raw,
-      // penting: private_key multiline
-      private_key: raw.private_key.replace(/\\n/g, "\n"),
-    };
+    const raw = JSON.parse(process.env.FIREBASE_CONFIG || "{}");
+
+    // penting: ubah \n yang di-env jadi newline asli
+    if (raw.private_key) {
+      raw.private_key = raw.private_key.replace(/\\n/g, "\n");
+    }
+
     admin.initializeApp({
-      credential: admin.credential.cert(sa),
-      databaseURL: process.env.FIREBASE_DATABASE_URL,
+      credential: admin.credential.cert(raw),
+      // WAJIB untuk akses Realtime Database
+      databaseURL:
+        raw.databaseURL ||
+        `https://${raw.project_id}-default-rtdb.asia-southeast1.firebasedatabase.app`,
     });
   }
   return admin;
