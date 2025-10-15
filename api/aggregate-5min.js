@@ -1,93 +1,64 @@
-// api/aggregate-5min/index.js
-const admin = require("firebase-admin");
-
-function initAdmin() {
-  if (!admin.apps.length) {
-    const raw = JSON.parse(process.env.FIREBASE_CONFIG);
-    const sa = { ...raw, private_key: raw.private_key.replace(/\\n/g, "\n") };
-    admin.initializeApp({
-      credential: admin.credential.cert(sa),
-      databaseURL:
-        process.env.FIREBASE_DATABASE_URL ||
-        "https://proyek-semester-3-default-rtdb.asia-southeast1.firebasedatabase.app",
-    });
-  }
-  return admin;
-}
-
-const BUCKET_MS = 5 * 60 * 1000;
+const admin = require("./FirebaseAdmin");
 
 module.exports = async (req, res) => {
   try {
-    const admin = initAdmin();
-    const rtdb = admin.database();
-    const fs = admin.firestore();
+    const db = admin.database();
+    const firestore = admin.firestore();
 
-    // window 5 menit yang BARU SELESAI
-    const now = Date.now();
-    const currentStart = Math.floor(now / BUCKET_MS) * BUCKET_MS;
-    const bucketStart = currentStart - BUCKET_MS;
-    const bucketEnd = currentStart - 1;
+    // Hitung waktu sekarang dalam WIB (UTC+7)
+    const nowUTC = Date.now();
+    const nowWIB = nowUTC + 7 * 60 * 60 * 1000; // offset ke WIB
 
-    const snap = await rtdb
-      .ref("kompos_01/raw_history")
+    // Buat window 5 menit terakhir (dalam WIB)
+    const bucketEnd = nowWIB;
+    const bucketStart = bucketEnd - 5 * 60 * 1000; // 5 menit sebelumnya
+
+    const ref = db.ref("kompos_01/raw_history");
+    const snapshot = await ref
       .orderByChild("timestamp")
       .startAt(bucketStart)
       .endAt(bucketEnd)
       .get();
 
-    let n = 0,
-      sum = 0;
-
-    if (snap.exists()) {
-      const raw = snap.val();
-      for (const k in raw) {
-        const d = raw[k] || {};
-        const vals = [
-          Number(d.temp_1) || 0,
-          Number(d.temp_2) || 0,
-          Number(d.temp_3) || 0,
-          Number(d.temp_4) || 0,
-        ].filter((x) => x > 0);
-        if (vals.length) {
-          sum += vals.reduce((a, b) => a + b) / vals.length;
-          n++;
-        }
-      }
+    if (!snapshot.exists()) {
+      return res
+        .status(200)
+        .send("OK 5min: avg=null°C, status=Tidak Ada Data, n=0");
     }
 
-    let avg = null,
-      status = "Tidak Ada Data";
-    if (n) {
-      avg = sum / n;
-      status =
-        avg > 32 ? "Suhu Tinggi" : avg < 28 ? "Suhu Rendah" : "Suhu Ideal";
-    }
+    const data = snapshot.val();
+    const temps = Object.values(data)
+      .map((d) => [d.temp_1, d.temp_2, d.temp_3, d.temp_4])
+      .flat()
+      .filter((v) => typeof v === "number");
 
-    // idempotent: docId = bucket_start
-    await fs.collection("history_logs_5min").doc(String(bucketStart)).set(
-      {
-        bucket_start: bucketStart,
-        bucket_end: bucketEnd,
-        count: n,
-        suhu_rata_rata: avg,
-        status,
-        created_at: admin.firestore.FieldValue.serverTimestamp(),
-        window_ms: BUCKET_MS,
-        source: "rtdb",
-      },
-      { merge: false }
-    );
+    const avg = temps.reduce((a, b) => a + b, 0) / temps.length;
+
+    // Tentukan status suhu
+    let status = "Normal";
+    if (avg < 25) status = "Suhu Terlalu Rendah";
+    else if (avg > 60) status = "Suhu Terlalu Tinggi";
+    else status = "Suhu Ideal";
+
+    // Simpan ke Firestore
+    await firestore.collection("compost_readings").add({
+      suhu_rata_rata: avg,
+      status,
+      bucket_start: bucketStart,
+      bucket_end: bucketEnd,
+      start_iso: new Date(bucketStart).toISOString(),
+      end_iso: new Date(bucketEnd).toISOString(),
+      source: "raw_history",
+      created_at: admin.firestore.FieldValue.serverTimestamp(),
+    });
 
     return res
       .status(200)
       .send(
-        `OK 5min: avg=${
-          avg?.toFixed ? avg.toFixed(2) : "null"
-        }°C, status=${status}, n=${n}`
+        `OK 5min: avg=${avg.toFixed(1)}°C, status=${status}, n=${temps.length}`
       );
-  } catch (e) {
-    console.error("aggregate-5min error:", e);
-    return res.status(500).send(e.stack || e.message || String(e));
+  } catch (err) {
+    console.error("Error:", err);
+    return res.status(500).send("Internal Server Error: " + err.message);
   }
 };
